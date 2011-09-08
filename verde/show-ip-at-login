@@ -1,0 +1,16 @@
+#!/bin/sh
+if [ "$METHOD" = loopback ]; then
+    exit 0
+fi
+
+# Only run from ifup.
+#if [ "$MODE" != start ]; then
+#    exit 0
+#fi
+
+cp /etc/issue-standard /etc/issue
+#/usr/local/bin/get-ip-address >> /etc/issue
+#echo "" >> /etc/issue
+echo "To access the VERDE Management Console, please visit - https://"`/usr/local/bin/get-ip-address`":8443/mc" >> /etc/issue
+echo "" >> /etc/issue
+
