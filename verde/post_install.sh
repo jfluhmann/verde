@@ -28,3 +28,9 @@ mv /root/get-ip-address /usr/local/bin/get-ip-address
 chmod +x /usr/local/bin/get-ip-address
 mv /root/show-ip-at-login /etc/network/if-up.d/show-ip-at-login
 chmod +x /etc/network/if-up.d/show-ip-at-login
+
+# GRUB_CMDLINE_LINUX=""
+# GRUB_CMDLINE_LINUX="rootdelay=45"
+sed -i 's/^GRUB_CMDLINE_LINUX="/GRUB_CMDLINE_LINUX="rootdelay=45 /' /etc/default/grub
+update-grub
+
