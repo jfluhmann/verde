@@ -87,13 +87,6 @@ case $DISTRO in
         yum install -y java-1.6.0 ghostscript
         VERDE_PKG="VERDE-5.5-r550.16048.x86_64.rpm"
         
-        # Show link to MC console at login prompt
-        # change TTY to show MC address
-        cp /etc/issue /etc/issue-standard
-        # Create get-ip-address script
-        echo "ip addr show | grep -v vbinat0 | grep -v \"127.0.0.1\" | grep \"inet \" | awk '{ print \$2 }' | awk -F/ '{print \$1 }'" > /usr/local/bin/get-ip-address
-        chmod +x /usr/local/bin/get-ip-address
-        
         ;;
     *)
         echo "You need one of the following OSes"
@@ -178,4 +171,11 @@ case $DISTRO in
         exit 1;
 esac
 
+# Show link to MC console at login prompt
+# change TTY to show MC address
+#cp /etc/issue /etc/issue-standard
+# Create get-ip-address script
+echo "ip addr show | grep -v vbinat0 | grep -v \"127.0.0.1\" | grep \"inet \" | awk '{ print \$2 }' | awk -F/ '{print \$1 }'" > /usr/local/bin/get-ip-address
+chmod +x /usr/local/bin/get-ip-address
+        
 echo "To access the VERDE Management Console, please visit - https://$(/usr/local/bin/get-ip-address):8443/mc"
