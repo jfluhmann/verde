@@ -8,12 +8,89 @@ if [ "$EUID" != "0" ] ; then
 fi
 
 # Is the CPU virtualization capable?
-if [ $(egrep -c '^flags.*(vmx)' /proc/cpuinfo) -gt 0 ]; then
-    echo "CPU Virtualization support: OK (make sure it's enabled in BIOS)"
-else
-    echo "Processor does not appear to support virtualization....exiting"; echo ""
-    exit 1
+###### Using most of kvm-ok - Begin kvm-ok based code here....
+# kvm-ok - check whether the CPU we're running on supports KVM acceleration
+# Copyright (C) 2008-2010 Canonical Ltd.
+#
+# Authors:
+#  Dustin Kirkland <kirkland@canonical.com>
+#  Kees Cook <kees.cook@canonical.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3,
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# check cpu flags for capability
+virt=$(egrep -m1 -w '^flags[[:blank:]]*:' /proc/cpuinfo | egrep -wo '(vmx|svm)') || true
+[ "$virt" = "vmx" ] && brand="intel"
+[ "$virt" = "svm" ] && brand="amd"
+
+if [ -z "$virt" ]; then
+	echo "INFO: Your CPU does not support KVM extensions"
+	echo "This server cannot be a VDI node (but could be a Management Console or Gateway)"
+	exit 1
 fi
+
+# Now, check that the device exists
+if [ -e /dev/kvm ]; then
+	echo "INFO: /dev/kvm exists"
+	echo "KVM acceleration can be used"
+else
+	echo "INFO: /dev/kvm does not exist"
+	echo "HINT:   sudo modprobe kvm_$brand"
+	echo "Enter your BIOS setup and verify that Virtualization Technology (VT) is enabled,"
+	echo "      and then hard poweroff/poweron your system"
+	exit 1
+fi
+
+# Prepare MSR access
+msr="/dev/cpu/0/msr"
+if [ ! -r "$msr" ]; then
+	modprobe msr
+fi
+
+echo "INFO: Your CPU supports KVM extensions"
+
+disabled=0
+# check brand-specific registers
+if [ "$virt" = "vmx" ]; then
+        BIT=$(rdmsr --bitfield 0:0 0x3a 2>/dev/null || true)
+        if [ "$BIT" = "1" ]; then
+                # and FEATURE_CONTROL_VMXON_ENABLED_OUTSIDE_SMX clear (no tboot)
+                BIT=$(rdmsr --bitfield 2:2 0x3a 2>/dev/null || true)
+                if [ "$BIT" = "0" ]; then
+			disabled=1
+                fi
+        fi
+
+elif [ "$virt" = "svm" ]; then
+        BIT=$(rdmsr --bitfield 4:4 0xc0010114 2>/dev/null || true)
+        if [ "$BIT" = "1" ]; then
+		disabled=1
+        fi
+else
+	echo "FAIL: Unknown virtualization extension: $virt"
+	echo "KVM acceleration can NOT be used"
+	echo "This server cannot be a VDI node (but could be a Management Console or Gateway)"
+	exit 1
+fi
+
+if [ "$disabled" -eq 1 ]; then
+	echo "INFO: KVM ($virt) is disabled by your BIOS"
+	echo "HINT: Enter your BIOS setup and enable Virtualization Technology (VT),"
+	echo "      and then hard poweroff/poweron your system"
+	exit 1
+fi
+#.... End kvm-ok based code here
+#####
 
 # Architecture needs to be 64-bit
 ARCH=$(uname -m)  # Should be x86_64
