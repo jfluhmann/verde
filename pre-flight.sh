@@ -46,7 +46,9 @@ if [ -e /dev/kvm ]; then
 else
 	echo "INFO: /dev/kvm does not exist"
 	echo "HINT:   sudo modprobe kvm_$brand"
-	echo "Enter your BIOS setup and verify that Virtualization Technology (VT) is enabled,"
+	echo "HINT:   Then re-run this script if modprobe doesn't return errors"
+	echo "Failing the above HINT, enter your BIOS setup and verify that "
+	echo "      Virtualization Technology (VT) is enabled,"
 	echo "      and then hard poweroff/poweron your system"
 	exit 1
 fi
