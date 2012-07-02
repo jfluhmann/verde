@@ -236,8 +236,9 @@ verde_prep() {
 	VERDE_LINK="http://vbridges.com/pub/pkg/linux/5.5SP5/$VERDE_PKG"
 }
 
-create_users() {
+create_verde_users() {
         # Create the mcadmin1 and vb-verde users/groups
+        MC_PASSWD="mcadmin1"
 	# Need to do some checking for the existence of vb-verde user/group
 	VBGID=$(egrep "^vb-verde" /etc/group | awk -F: '{print $3}')
 	VBUID=$(egrep "^vb-verde" /etc/passwd | awk -F: '{print $3}')
@@ -305,9 +306,9 @@ create_users() {
 	if [ -z $MCUID ]; then
 	    MCUID=$(awk -F: '{uid[$3]=1}END{for(x=6000; x<=6999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/passwd)
 	    echo "Adding user mcadmin1 ($MCUID)"
-	    useradd -m --uid $MCUID --gid $MCGID mcadmin1
-	    echo "Please set the password for the MC User - mcadmin1"
-	    passwd mcadmin1
+	    useradd -m --uid $MCUID --gid $MCGID mcadmin1 -p $(openssl passwd -1 $MC_PASSWD)
+#	    echo "Please set the password for the MC User - mcadmin1"
+#	    passwd mcadmin1
 	    #echo "Please enter a password for the mcadmin1 user: "
 	    #read PW
 	    #PW=mcadmin1
@@ -319,6 +320,57 @@ create_users() {
 	fi
 
 }
+
+create_user() {
+    USER=$1
+    # Create the $USER user/group
+    # Need to do some checking for the existence of $USER user/group
+    USERGID=$(egrep "^$USER" /etc/group | awk -F: '{print $3}')
+    USERUID=$(egrep "^$USER" /etc/passwd | awk -F: '{print $3}')
+    
+    # although users may not exist on this server, this could
+    #    be a cluster. In which case we want to check for existence
+    #    of /home/<user> folders, set UID/GID appropriately,
+    #    and pass -M instead of -m when creating users
+    if [ -z $USERGID ] && [ -z $USERUID ]; then
+        if [ -d "/home/$USER" ]; then
+            $USERGID=$(ls -ld /home/$USER | awk '{print $4}')
+            groupadd --gid $USERGID $USER
+            
+            $USERUID=$(ls -ld /home/$USER | awk '{print $3}')
+            useradd -M --uid $USERUID --gid $USERGID $USER -p $(openssl passwd -1 $USER)
+        fi
+    fi
+
+    if [ -z $USERGID ]; then
+        USERGID=$(awk -F: '{uid[$3]=1}END{for(x=7001; x<=7999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/group)
+        echo "Adding group $USER ($USERGID)"
+        groupadd --gid $USERGID $USER
+    else
+        echo "Group '$USER' exists: GID=$USERGID"
+    fi
+
+    if [ -z $USERUID ]; then
+        USERUID=$(awk -F: '{uid[$3]=1}END{for(x=7001; x<=7999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/passwd)
+        echo "Adding user $USER ($USERUID)"
+        useradd -m --uid $USERUID --gid $USERGID $USER -p $(openssl passwd -1 $USER)
+    else
+        echo "User '$USER' exists: UID=$USERUID"
+    fi
+}
+
+ create_group() {
+    GROUP=$1
+    GID=$(egrep "^$GROUP" /etc/group | awk -F: '{print $3}')
+    if [ -z $GID ]; then
+        GID=$(awk -F: '{uid[$3]=1}END{for(x=7000; x<=7999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/group)
+        echo "Adding group $GROUP ($GID)"
+        groupadd --gid $GID $GROUP
+    else
+        echo "Group '$GROUP' exists: GID=$GID"
+    fi
+ }
+ 
 
 ROLE="CM_VDI"
 ANSWER_FILE="/tmp/answer.verde"
@@ -377,7 +429,17 @@ fi
 echo "Checking Distribution and release version...."; sleep 2
 check_distro
 verde_prep $NFS_MOUNT
-create_users
+# Create mcadmin1 and vb-verde users
+create_verde_users
+
+if [ $POC = "true" ]; then
+    # Create the 'verdegrp' group, along with the five verde0{n} PoC users
+    create_group "verdegrp"
+    for i in {1..5}; do
+        create_user "verde0$i"
+        usermod -a -G verdegrp "verde0$i"
+    done
+fi
 
 # Download the VERDE package
 download()
@@ -411,10 +473,11 @@ case $DISTRO in
         exit 1;
 esac
 
+BRANCH_SETTINGS_FILE="/home/vb-verde/.verde-local/settings.branch"
 # If we're a branch (POC), we need to accommodate
-if [ -n $POC ]; then
+if [ -n "$POC" ]; then
     #   - create the settings.branch file
-    cat > /home/vb-verde/.verde-local/settings.branch << "EOF"
+    cat > $BRANCH_SETTINGS_FILE << "EOF"
 # VERDE Branch server settings
 WIN4_BRANCH_USER_DATA_SYNC_TIME="1:00"
 CLOUD_USERNAME="verde01"
@@ -422,10 +485,12 @@ CLOUD_DOMAIN=""
 CLOUD_PASSWORD="PASSWORD=a2434ba99803a969 b8121d999b03d71dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61dce776ffdfe33e61d"
 CLOUD_ADDR="172.16.1.148"
 EOF
+    # Change ownership to vb-verde
+    chown $VBUID:$VBGID $BRANCH_SETTINGS_FILE
+    
+    # Re-start VERDE to apply branch settings
+    /etc/init.d/VERDE restart
 fi
-
-# Re-start VERDE to apply branch settings
-/etc/init.d/VERDE restart
 
 # Show link to MC console at login prompt
 # Create get-ip-address script
