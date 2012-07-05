@@ -161,7 +161,14 @@ verde_prep() {
 		apt-get remove -y chkconfig
 		apt-get install -y libaio1 libpng12-0 libjpeg62 libsm6 libice6 libxt6 zip
 		apt-get install -y openjdk-6-jre ghostscript
-		VERDE_PKG="verde_5.5-r550.16048_amd64.deb"
+                case "$RELVER" in
+                    "5.5SP5")
+                        VERDE_PKG="verde_5.5-r550.16048_amd64.deb"
+                        ;;
+                    "6.5")
+                        VERDE_PKG="verde_6.5-r650.15512_amd64.deb"
+                        ;;
+                esac
 		if [ "$1" ]; then
                     $mount_point = $1
 		    echo "NFS mount point passed - $mount_point"; sleep 2
@@ -207,7 +214,14 @@ verde_prep() {
 		echo "Installing packages needed by VERDE"
 		yum install -y libaio libXrandr libXfixes zip
 		yum install -y java-1.6.0 ghostscript
-		VERDE_PKG="VERDE-5.5-r550.16048.x86_64.rpm"
+                case "$RELVER" in
+                    "5.5SP5")
+                        VERDE_PKG="VERDE-5.5-r550.16048.x86_64.rpm"
+                        ;;
+                    "6.5")
+                        VERDE_PKG="VERDE-6.5-r650.15512.x86_64.rpm"
+                        ;;
+                esac
 		if [ "$1" ]; then
 		    echo "NFS mount point passed - $1"; sleep 2
 		    yum install -y nfs-utils
@@ -233,12 +247,12 @@ verde_prep() {
 		echo "Something went wrong....exiting"; echo ""
 		exit 1
 	esac
-	VERDE_LINK="http://vbridges.com/pub/pkg/linux/5.5SP5/$VERDE_PKG"
+	VERDE_LINK="http://vbridges.com/pub/pkg/linux/$RELVER/$VERDE_PKG"
 }
 
 create_verde_users() {
-        # Create the mcadmin1 and vb-verde users/groups
-        MC_PASSWD="mcadmin1"
+        ##########  MCADMIN1 DOES NOT NEED TO BE CREATED IN r650  ##########
+        
 	# Need to do some checking for the existence of vb-verde user/group
 	VBGID=$(egrep "^vb-verde" /etc/group | awk -F: '{print $3}')
 	VBUID=$(egrep "^vb-verde" /etc/passwd | awk -F: '{print $3}')
@@ -272,53 +286,57 @@ create_verde_users() {
 	else
 	    echo "User 'vb-verde' exists: UID=$VBUID"
 	fi
-
-
-	# Need to do some checking for the existence of mcadmin1 user/group
-	MCGID=$(egrep "^mcadmin1" /etc/group | awk -F: '{print $3}')
-	MCUID=$(egrep "^mcadmin1" /etc/passwd | awk -F: '{print $3}')
         
-        # although users may not exist on this server, this could
-        #    be a cluster. In which case we want to check for existence
-        #    of /home/<user> folders, set UID/GID appropriately,
-        #    and pass -M instead of -m when creating users
-        if [ -z $MCGID ] && [ -z $MCUID ]; then
-            if [ -d "/home/mcadmin1" ]; then
-                $MCGID=$(ls -ld /home/mcadmin1 | awk '{print $4}')
-                groupadd --gid $MCGID mcadmin1
-                
-                $MCUID=$(ls -ld /home/mcadmin1 | awk '{print $3}')
-                useradd -M --uid $MCUID --gid $MCGID mcadmin1
-                echo "This appears to be a cluster. Please set the MC User (mcadmin1)"
-                echo "    password to match the other server(s)."
-	        passwd mcadmin1
-            fi
+        if [ "$RELVER" = "5.5SP5" ]; then
+		
+		# Create the mcadmin1 and vb-verde users/groups
+		MC_PASSWD="mcadmin1"
+		
+		# Need to do some checking for the existence of mcadmin1 user/group
+		MCGID=$(egrep "^mcadmin1" /etc/group | awk -F: '{print $3}')
+		MCUID=$(egrep "^mcadmin1" /etc/passwd | awk -F: '{print $3}')
+		
+		# although users may not exist on this server, this could
+		#    be a cluster. In which case we want to check for existence
+		#    of /home/<user> folders, set UID/GID appropriately,
+		#    and pass -M instead of -m when creating users
+		if [ -z $MCGID ] && [ -z $MCUID ]; then
+		    if [ -d "/home/mcadmin1" ]; then
+		        $MCGID=$(ls -ld /home/mcadmin1 | awk '{print $4}')
+		        groupadd --gid $MCGID mcadmin1
+		        
+		        $MCUID=$(ls -ld /home/mcadmin1 | awk '{print $3}')
+		        useradd -M --uid $MCUID --gid $MCGID mcadmin1
+		        echo "This appears to be a cluster. Please set the MC User (mcadmin1)"
+		        echo "    password to match the other server(s)."
+			passwd mcadmin1
+		    fi
+		fi
+
+		if [ -z $MCGID ]; then
+		    MCGID=$(awk -F: '{uid[$3]=1}END{for(x=6000; x<=6999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/group)
+		    echo "Adding group mcadmin1 ($MCGID)"
+		    groupadd --gid $MCGID mcadmin1
+		else
+		    echo "Group 'mcadmin1' exists: GID=$MCGID"
+		fi
+
+		if [ -z $MCUID ]; then
+		    MCUID=$(awk -F: '{uid[$3]=1}END{for(x=6000; x<=6999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/passwd)
+		    echo "Adding user mcadmin1 ($MCUID)"
+		    useradd -m --uid $MCUID --gid $MCGID mcadmin1 -p $(openssl passwd -1 $MC_PASSWD)
+	#	    echo "Please set the password for the MC User - mcadmin1"
+	#	    passwd mcadmin1
+		    #echo "Please enter a password for the mcadmin1 user: "
+		    #read PW
+		    #PW=mcadmin1
+		    #ENCPW=$(echo $PW|mkpasswd -s)
+		    #ENCPW=$(echo $PW| openssl passwd -1 -stdin)
+		    #useradd -m --uid $MCUID --gid $MCGID -p $ENCPW mcadmin1
+		else
+		    echo "User 'mcadmin1' exists: UID=$MCUID"
+		fi
         fi
-
-	if [ -z $MCGID ]; then
-	    MCGID=$(awk -F: '{uid[$3]=1}END{for(x=6000; x<=6999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/group)
-	    echo "Adding group mcadmin1 ($MCGID)"
-	    groupadd --gid $MCGID mcadmin1
-	else
-	    echo "Group 'mcadmin1' exists: GID=$MCGID"
-	fi
-
-	if [ -z $MCUID ]; then
-	    MCUID=$(awk -F: '{uid[$3]=1}END{for(x=6000; x<=6999; x++) {if(uid[x] != ""){}else{print x; exit;}}}' /etc/passwd)
-	    echo "Adding user mcadmin1 ($MCUID)"
-	    useradd -m --uid $MCUID --gid $MCGID mcadmin1 -p $(openssl passwd -1 $MC_PASSWD)
-#	    echo "Please set the password for the MC User - mcadmin1"
-#	    passwd mcadmin1
-	    #echo "Please enter a password for the mcadmin1 user: "
-	    #read PW
-	    #PW=mcadmin1
-	    #ENCPW=$(echo $PW|mkpasswd -s)
-	    #ENCPW=$(echo $PW| openssl passwd -1 -stdin)
-	    #useradd -m --uid $MCUID --gid $MCGID -p $ENCPW mcadmin1
-	else
-	    echo "User 'mcadmin1' exists: UID=$MCUID"
-	fi
-
 }
 
 create_user() {
@@ -359,7 +377,7 @@ create_user() {
     fi
 }
 
- create_group() {
+create_group() {
     GROUP=$1
     GID=$(egrep "^$GROUP" /etc/group | awk -F: '{print $3}')
     if [ -z $GID ]; then
@@ -373,8 +391,9 @@ create_user() {
  
 
 ROLE="CM_VDI"
+RELVER="5.5SP5"
 ANSWER_FILE="/tmp/answer.verde"
-while getopts ":r:m:p" opt; do
+while getopts ":r:m:pv:" opt; do
     case "$opt" in
         "r")
             ROLE="$OPTARG"
@@ -406,6 +425,21 @@ while getopts ":r:m:p" opt; do
             POC="true"
             
             ;;
+        "v")
+            # What version do we want?
+            case "$OPTARG" in
+                "r550")
+                    RELVER="5.5SP5"
+                    ;;
+                "r650")
+                    RELVER="6.5"
+                    ;;
+                *)
+                    echo "-v (Version) must be either r550 or r650"
+                    exit 1
+                    ;;
+            esac
+            ;;
         ":")
             echo "  Option -$OPTARG requires an argument."
             ;;
@@ -432,7 +466,7 @@ verde_prep $NFS_MOUNT
 # Create mcadmin1 and vb-verde users
 create_verde_users
 
-if [ $POC = "true" ]; then
+if [ "$POC" = "true" ]; then
     # Create the 'verdegrp' group, along with the five verde0{n} PoC users
     create_group "verdegrp"
     for i in {1..5}; do
@@ -458,7 +492,7 @@ if [ ! -f $VERDE_PKG ]; then
 fi
 
 echo "Installing $VERDE_PKG"
-if [ $ROLE != "CM_VDI" ]; then
+if [ "$ROLE" != "CM_VDI" ]; then
     echo "server_role=\"$ROLE\"" >> $ANSWER_FILE
     export VERDE_CONFIG_CMDLINE="-f $ANSWER_FILE -u"
 fi
