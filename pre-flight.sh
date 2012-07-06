@@ -9,6 +9,17 @@ check_root() {
 	fi
 }
 
+check_ram() {
+    # VERDE needs an absolute minimum of 4GB RAM
+    MEM_TOTAL=$(awk '/MemTotal/{print $2}' /proc/meminfo)
+    if [ "$MEM_TOTAL" -lt "3900000" ]; then
+        echo "Server does not meet RAM requirements"
+        echo "    minimum 4GB for demo purposes"
+        echo "    minimum 8GB for production"
+        exit 1
+    fi
+}
+
 check_arch() {
 	# Architecture needs to be 64-bit
 	ARCH=$(uname -m)  # Should be x86_64
@@ -450,17 +461,19 @@ while getopts ":r:m:pv:" opt; do
     esac
 done
 
-echo "Checking if we have root permissions...."; sleep 2
+echo "Checking if we have root permissions...."; sleep 1
 check_root
-echo "Checking architecture type...."; sleep 2
+echo "Checking minimum RAM requirements...."; sleep 1
+check_ram
+echo "Checking architecture type...."; sleep 1
 check_arch
 
 if [ $ROLE = "CM_VDI" ] || [ $ROLE = "VDI_Only" ]; then
-    echo "Checking KVM support...."; sleep 2
+    echo "Checking KVM support...."; sleep 1
     kvm_ok
 fi
 
-echo "Checking Distribution and release version...."; sleep 2
+echo "Checking Distribution and release version...."; sleep 1
 check_distro
 verde_prep $NFS_MOUNT
 # Create mcadmin1 and vb-verde users
