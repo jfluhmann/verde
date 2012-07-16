@@ -61,5 +61,8 @@ ntp
 %end
 
 %post
+cd /root
+wget https://raw.github.com/jfluhmann/verde/master/pre-flight.sh
+chmod +x /root/pre-flight.sh
 %end
 
