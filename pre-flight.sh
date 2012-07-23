@@ -12,7 +12,7 @@ check_root() {
 check_ram() {
     # VERDE needs an absolute minimum of 4GB RAM
     MEM_TOTAL=$(awk '/MemTotal/{print $2}' /proc/meminfo)
-    if [ "$MEM_TOTAL" -lt "3900000" ]; then
+    if [ "$MEM_TOTAL" -lt "3600000" ]; then
         echo "Server does not meet RAM requirements"
         echo "    minimum 4GB for demo purposes"
         echo "    minimum 8GB for production"
