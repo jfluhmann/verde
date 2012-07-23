@@ -61,21 +61,22 @@ kvm_ok() {
 		echo "This server cannot be a VDI node (but could be a Management Console or Gateway)"
 		exit 1
 	fi
-
-	# Now, check that the device exists
-	if [ -e /dev/kvm ]; then
-		echo "INFO: /dev/kvm exists"
-		echo "KVM acceleration can be used"
-	else
-		echo "INFO: /dev/kvm does not exist"
-		echo "HINT:   sudo modprobe kvm_$brand"
-		echo "HINT:   Then re-run this script if modprobe doesn't return errors"
-		echo "Failing the above HINT, enter your BIOS setup and verify that "
-		echo "      Virtualization Technology (VT) is enabled,"
-		echo "      and then hard poweroff/poweron your system"
-		exit 1
-	fi
-
+        
+        # We create /dev/kvm with the VERDE install. I don't think it's supposed to exist prior.
+	## Now, check that the device exists
+	#if [ -e /dev/kvm ]; then
+	#	echo "INFO: /dev/kvm exists"
+	#	echo "KVM acceleration can be used"
+	#else
+	#	echo "INFO: /dev/kvm does not exist"
+	#	echo "HINT:   sudo modprobe kvm_$brand"
+	#	echo "HINT:   Then re-run this script if modprobe doesn't return errors"
+	#	echo "Failing the above HINT, enter your BIOS setup and verify that "
+	#	echo "      Virtualization Technology (VT) is enabled,"
+	#	echo "      and then hard poweroff/poweron your system"
+	#	exit 1
+	#fi
+	#
 	# Prepare MSR access
 	msr="/dev/cpu/0/msr"
 	if [ ! -r "$msr" ]; then
@@ -211,6 +212,7 @@ verde_prep() {
 		sed -i -e 's/SELINUX=permissive/SELINUX=disabled/' /etc/selinux/config
 		
 		# turn off firewall (or make appropriate adjustments??)
+		iptables -F
 		service iptables save
 		service iptables stop
 		chkconfig iptables off
@@ -475,9 +477,9 @@ fi
 
 echo "Checking Distribution and release version...."; sleep 1
 check_distro
-verde_prep $NFS_MOUNT
-# Create mcadmin1 and vb-verde users
+# Create vb-verde user (and mcadmin1 if r550)
 create_verde_users
+verde_prep $NFS_MOUNT
 
 if [ "$POC" = "true" ]; then
     # Create the 'verdegrp' group, along with the five verde0{n} PoC users
@@ -514,7 +516,7 @@ case $DISTRO in
         dpkg -i $VERDE_PKG
         ;;
     'CentOS')
-        rpm -ivh $VERDE_PKG
+        rpm -i $VERDE_PKG
         ;;
     *)
         exit 1;
