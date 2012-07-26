@@ -1,5 +1,13 @@
 #!/bin/bash
 
+VERDE6_DEB="verde_6.6-r660.16697_amd64.deb"
+VERDE6_RPM="VERDE-6.6-r660.16697.x86_64.rpm"
+VERDE5_DEB="verde_5.5-r550.16048_amd64.deb"
+VERDE5_RPM="VERDE-5.5-r550.16048.x86_64.rpm"
+
+# Default settings if no parameters passed
+ROLE="CM_VDI"
+RELVER="6.6"
 
 check_root() {
 	# We need to run this script with root privileges
@@ -171,14 +179,14 @@ verde_prep() {
 		# - VERDE required packages
 		echo "Installing packages needed by VERDE"
 		apt-get remove -y chkconfig
-		apt-get install -y libaio1 libpng12-0 libjpeg62 libsm6 libice6 libxt6 zip
+		apt-get install -y libaio1 libpng12-0 libjpeg62 libsm6 libice6 libxt6 genisoimage zip
 		apt-get install -y openjdk-6-jre ghostscript
                 case "$RELVER" in
                     "5.5SP5")
-                        VERDE_PKG="verde_5.5-r550.16048_amd64.deb"
+                        VERDE_PKG=$VERDE5_DEB
                         ;;
-                    "6.5")
-                        VERDE_PKG="verde_6.5-r650.15512_amd64.deb"
+                    "6.6")
+                        VERDE_PKG=$VERDE6_DEB
                         ;;
                 esac
 		if [ "$1" ]; then
@@ -225,14 +233,14 @@ verde_prep() {
 		
 		# - VERDE required packages
 		echo "Installing packages needed by VERDE"
-		yum install -y libaio libXrandr libXfixes zip
+		yum install -y libaio libXrandr libXfixes genisoimage zip
 		yum install -y java-1.6.0 ghostscript
                 case "$RELVER" in
                     "5.5SP5")
-                        VERDE_PKG="VERDE-5.5-r550.16048.x86_64.rpm"
+                        VERDE_PKG=$VERDE5_RPM
                         ;;
-                    "6.5")
-                        VERDE_PKG="VERDE-6.5-r650.15512.x86_64.rpm"
+                    "6.6")
+                        VERDE_PKG=$VERDE6_RPM
                         ;;
                 esac
 		if [ "$1" ]; then
@@ -264,7 +272,7 @@ verde_prep() {
 }
 
 create_verde_users() {
-        ##########  MCADMIN1 DOES NOT NEED TO BE CREATED IN r650  ##########
+        ##########  MCADMIN1 DOES NOT NEED TO BE CREATED IN r660  ##########
         
 	# Need to do some checking for the existence of vb-verde user/group
 	VBGID=$(egrep "^vb-verde" /etc/group | awk -F: '{print $3}')
@@ -403,8 +411,6 @@ create_group() {
  }
  
 
-ROLE="CM_VDI"
-RELVER="5.5SP5"
 ANSWER_FILE="/tmp/answer.verde"
 while getopts ":r:m:pv:" opt; do
     case "$opt" in
@@ -444,11 +450,11 @@ while getopts ":r:m:pv:" opt; do
                 "r550")
                     RELVER="5.5SP5"
                     ;;
-                "r650")
-                    RELVER="6.5"
+                "r660")
+                    RELVER="6.6"
                     ;;
                 *)
-                    echo "-v (Version) must be either r550 or r650"
+                    echo "-v (Version) must be either r550 or r660"
                     exit 1
                     ;;
             esac
