@@ -31,6 +31,7 @@ do
        --uc-logout)   
            uc_logout=$2;shift
            check_root
+           chmod 666 $UC_PROPERTIES_FILE
            if [ $uc_logout = "true" ] || [ $uc_logout = "false" ]; then
                if [ -f $UC_PROPERTIES_FILE ]; then
                    echo "Setting logout on disconnect to $uc_logout"
@@ -41,6 +42,7 @@ do
            else
                usage
            fi
+           chmod 444 $UC_PROPERTIES_FILE
            ;;
        --uc-advanced) 
            uc_advanced=$2;shift
