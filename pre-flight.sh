@@ -5,9 +5,12 @@ VERDE6_RPM="VERDE-6.6-r660.16697.x86_64.rpm"
 VERDE5_DEB="verde_5.5-r550.16048_amd64.deb"
 VERDE5_RPM="VERDE-5.5-r550.16048.x86_64.rpm"
 
+VERDE6="6.6"
+VERDE5="5.5SP5"
+
 # Default settings if no parameters passed
 ROLE="CM_VDI"
-RELVER="6.6"
+RELVER=$VERDE6
 
 check_root() {
 	# We need to run this script with root privileges
@@ -182,10 +185,10 @@ verde_prep() {
 		apt-get install -y libaio1 libpng12-0 libjpeg62 libsm6 libice6 libxt6 genisoimage zip
 		apt-get install -y openjdk-6-jre ghostscript
                 case "$RELVER" in
-                    "5.5SP5")
+                    "$VERDE5")
                         VERDE_PKG=$VERDE5_DEB
                         ;;
-                    "6.6")
+                    "$VERDE6")
                         VERDE_PKG=$VERDE6_DEB
                         ;;
                 esac
@@ -235,11 +238,12 @@ verde_prep() {
 		echo "Installing packages needed by VERDE"
 		yum install -y libaio libXrandr libXfixes genisoimage zip
 		yum install -y java-1.6.0 ghostscript
+                yum install -y bind-utils unzip wget 
                 case "$RELVER" in
-                    "5.5SP5")
+                    "$VERDE5")
                         VERDE_PKG=$VERDE5_RPM
                         ;;
-                    "6.6")
+                    "$VERDE6")
                         VERDE_PKG=$VERDE6_RPM
                         ;;
                 esac
@@ -308,7 +312,7 @@ create_verde_users() {
 	    echo "User 'vb-verde' exists: UID=$VBUID"
 	fi
         
-        if [ "$RELVER" = "5.5SP5" ]; then
+        if [ "$RELVER" = "$VERDE5" ]; then
 		
 		# Create the mcadmin1 and vb-verde users/groups
 		MC_PASSWD="mcadmin1"
@@ -447,14 +451,14 @@ while getopts ":r:m:pv:" opt; do
         "v")
             # What version do we want?
             case "$OPTARG" in
-                "r550")
-                    RELVER="5.5SP5"
+                "5")
+                    RELVER="$VERDE5"
                     ;;
-                "r660")
-                    RELVER="6.6"
+                "6")
+                    RELVER="$VERDE6"
                     ;;
                 *)
-                    echo "-v (Version) must be either r550 or r660"
+                    echo "-v [Version] must be either 5 or 6"
                     exit 1
                     ;;
             esac
@@ -487,7 +491,8 @@ check_distro
 create_verde_users
 verde_prep $NFS_MOUNT
 
-if [ "$POC" = "true" ]; then
+# This is no longer true for r6xx branch
+if [ "$POC" = "true" ] && [ ! "$RELVER" = "$VERDE6" ]; then
     # Create the 'verdegrp' group, along with the five verde0{n} PoC users
     create_group "verdegrp"
     for i in {1..5}; do
