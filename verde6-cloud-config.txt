@@ -1,0 +1,33 @@
+#cloud-config
+
+### You will need to modify the  '# Get VERDE package' section to include the download link
+### Ideally, you make this a template and use sed or a script w/sed to generate the actual file
+###   with the appropriate download link and package name
+
+apt_update: true
+apt_upgrade: true
+# - VERDE required packages
+packages:
+- libaio1
+- libpng12-0
+- libjpeg62
+- libsm6
+- libice6
+- libxt6
+- genisoimage
+- zip
+- openjdk-6-jre
+- ghostscript
+
+runcmd:
+# Create vb-verde user and group
+ - [ groupadd, --gid, 5000, vb-verde ]
+ - [ useradd, -m, --uid, 5000, --gid, 5000, vb-verde ]
+
+# Get VERDE package
+ - [ "wget", <VERDE download link here>, "-O", "/tmp/<VERDE package name here>" ]
+ - [ sh, -xc, "echo 'server_role=\"CM_Only\"' >> /tmp/answer.verde" ]
+ - [ export, VERDE_CONFIGCMDLINE="-f /tmp/answer.verde -u" ]
+ - [ dpkg, --install, /tmp/<VERDE package name here> ]
+
+

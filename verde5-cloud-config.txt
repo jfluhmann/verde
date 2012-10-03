@@ -1,0 +1,48 @@
+#cloud-config
+
+### You will need to modify the  '# Get VERDE package' section to include the download link
+### Ideally, you make this a template and use sed or a script w/sed to generate the actual file
+###   with the appropriate download link and package name
+
+apt_update: true
+apt_upgrade: true
+# - VERDE required packages
+packages:
+- libaio1
+- libpng12-0
+- libjpeg62
+- libsm6
+- libice6
+- libxt6
+- genisoimage
+- zip
+- openjdk-6-jre
+- ghostscript
+
+runcmd:
+# Create vb-verde/mcadmin1 user and group
+ - [ groupadd, --gid, 5000, vb-verde ]
+ - [ useradd, -m, --uid, 5000, --gid, 5000, vb-verde ]
+
+ - [ groupadd, --gid, 6000, mcadmin1 ]
+# The setting of the password doesn't appear to be working. Need to review chpasswd of cloud-init
+ - [ export, ENC_PW=$(openssl passwd -1 'mcadmin1') ]
+ - [ useradd, -m, --uid, 6000, --gid, 6000, "-p $ENC_PW", mcadmin1 ]
+
+#there is also an option to set multiple users passwords, using 'chpasswd'
+# That looks like the following, with 'expire' set to 'True' by default.
+# to not expire users passwords, set 'expire' to 'False':
+# chpasswd:
+#  list: |
+#    user1:password1
+#    user2:RANDOM
+#  expire: True
+# ssh_pwauth: [ True, False, "" or "unchanged" ]
+
+# Get VERDE package
+ - [ "wget", <VERDE Download link goes here>, "-O", "/tmp/<VERDE package name goes here>" ]
+ - [ sh, -xc, "echo 'server_role=\"CM_Only\"' >> /tmp/answer.verde" ]
+ - [ export, VERDE_CONFIGCMDLINE="-f /tmp/answer.verde -u" ]
+ - [ dpkg, --install, /tmp/<VERDE package name goes here ]
+
+
