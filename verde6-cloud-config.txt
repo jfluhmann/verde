@@ -4,6 +4,9 @@
 ### Ideally, you make this a template and use sed or a script w/sed to generate the actual file
 ###   with the appropriate download link and package name
 
+### amic7b202ae is the "official" Ubuntu 10.04 64-bit image, required for VERDE
+### ec2-run-instances ami-c7b202ae -t <m1.medium, at least> -k <keypair> -g default -g verde-ports --user-data-file=verde6-cloud-config.txt
+
 apt_update: true
 apt_upgrade: true
 # - VERDE required packages
