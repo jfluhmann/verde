@@ -6,6 +6,7 @@
 
 ### amic7b202ae is the "official" Ubuntu 10.04 64-bit image, required for VERDE
 ### ec2-run-instances ami-c7b202ae -t <m1.medium, at least> -k <keypair> -g default -g verde-ports --user-data-file=verde6-cloud-config.txt
+####  --block-device-mapping "/dev/sdh=:100"
 
 apt_update: true
 apt_upgrade: true
@@ -22,15 +23,16 @@ packages:
 - openjdk-6-jre
 - ghostscript
 
+mounts:
+ - [ sdh, /mnt, "auto", "defaults", "0", "0" ]
+
 runcmd:
 # Create vb-verde user and group
  - [ groupadd, --gid, 5000, vb-verde ]
- - [ useradd, -m, --uid, 5000, --gid, 5000, vb-verde ]
+ - [ useradd, -m, --uid, 5000, --gid, 5000, -d, /mnt/vb-verde, vb-verde ]
 
 # Get VERDE package
  - [ "wget", <VERDE download link here>, "-O", "/tmp/<VERDE package name here>" ]
  - [ sh, -xc, "echo 'server_role=\"CM_Only\"' >> /tmp/answer.verde" ]
  - [ export, VERDE_CONFIGCMDLINE="-f /tmp/answer.verde -u" ]
- - [ dpkg, --install, /tmp/<VERDE package name here> ]
-
-
+ - [ dpkg, --install, "/tmp/<VERDE package name here>" ]
